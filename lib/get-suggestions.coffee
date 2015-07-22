@@ -4,10 +4,12 @@ path = require 'path'
 
 handler = require './handler'
 
-processContext = ({editor, bufferPosition, scopeDescriptor}) ->
+processContext = ({editor, bufferPosition, scopeDescriptor, prefix}) ->
   filepath = editor.getPath()
   contents = editor.getText()
   filetypes = scopeDescriptor.getScopesArray().map (scope) -> scope.split('.').pop()
+  if prefix == ";"
+    return Promise.reject []
   if filepath?
     return {filepath, contents, filetypes, editor, bufferPosition}
   else
@@ -87,11 +89,14 @@ convertCompletions = ({completions, prefix, filetypes}) ->
   )]
 
   completions.map (completion) -> formatter converter completion
+    .filter (completion) -> completion.rightLabel != "MACRO"
+    .filter (completion) -> ! (completion.snippet.match /^(__|_GLIBC)/)
 
 getSuggestions = (context) ->
   Promise.resolve context
     .then processContext
     .then fetchCompletions
     .then convertCompletions
+    .catch (error) -> if Array.isArray error then error else throw error
 
 module.exports = getSuggestions
